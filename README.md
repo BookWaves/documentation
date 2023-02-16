@@ -8,6 +8,8 @@ us at info@bookwaves.de
 
 This documentation is still WIP.
 
+If you have questions, please feel free to use the Discussions feature https://github.com/BookWaves/documentation/discussions of this repo.
+
 ## A brief how-to
 
 ### Building the stack
