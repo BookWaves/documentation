@@ -1,0 +1,49 @@
+version: "3.3"
+
+services:
+  traefik:
+    image: traefik
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    container_name: bookwaves-traefik
+    restart: "always"
+    ports:
+      # Port 443 is used for HTTP trafic
+      - "80:80"
+      # Port 443 is used for HTTPS trafic
+      - "443:443"
+      # Port 8080 is used for traefik's own dashboard
+      - "8080:8080"
+    volumes:
+      # Here is the mount of the traefik config
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      # Here is the mount of the local ~/ssl directory
+      - ./ssl:/etc/traefik/ssl:ro
+      # The docker socket is mounted for auto-discovery of new services
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      # Attach the traefik container to the default network (which is the global "gateway" network)
+      - traefik
+
+
+#  whoami:
+    # A container that exposes an API to show its IP address
+ #   image: traefik/whoami
+  #  container_name: whoserv
+  #  ports:
+  #    - "81:80"
+   #   - "82:83"
+  #  labels:
+  #    - "traefik.http.routers.whoamidd.rule=Path(`/foo`)"
+   #   - "traefik.http.routers.whoamidd.rule=Host(`rfid.ub.tu-dortmund.de`)"
+  #    - "traefik.http.services.whoami.loadBalancer.server.url=whoserv:81"
+  #  networks:
+  #    - test1
+
+networks:
+  traefik:
+    external: true

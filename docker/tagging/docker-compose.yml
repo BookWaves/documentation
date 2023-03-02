@@ -1,0 +1,154 @@
+version: "3.3"
+
+services:
+
+  # Tagging Stations
+  ## Each tagging station has one of these blocks
+  ## To add a new tagging station, copy, paste and uncomment the block, then fill in the relevant values
+
+  #[STATION-ID]:
+  #  container_name: [STATION-ID]
+  #  image: gitlab.ub.tu-dortmund.de:4567/rfid/rfid-reader:[CURRENT-VERSION]
+  #  logging:
+  #    driver: "json-file"
+  #    options:
+  #      max-file: "5"
+  #      max-size: "10m"
+  #  restart: always
+  #  environment:
+  #    STATION_ID: [STATION-ID]
+  #    READER_ID: [RFID-READER-ID]
+  #    READER_IP: [RFID-READER-IP]
+  #    WHITELIST: "^1381F871.*|^41.*|^E2806894.*"
+  #    STATISTICS: [STATION-ID-1],[STATION-ID-2],[STATION-ID-3]
+  #    POSTGRES_USER: foo
+  #    POSTGRES_PW: bar
+  #    POSTGRES_DB: jdbc:postgresql://db/rfid
+  #  ports:
+  #    - "[AAAA]-[BBBB]:9100-9101"
+  #  labels:
+  #   - "traefik.http.routers.[STATION-ID].rule=PathPrefix(`/[STATION-ID]`)"
+  #   - "traefik.http.routers.[STATION-ID].tls=true"
+  #   - "traefik.http.middlewares.[STATION-ID]-mw.stripprefix.prefixes=/[STATION-ID]"
+  #   - "traefik.http.routers.[STATION-ID].middlewares=[STATION-ID]-mw"
+  #   - "traefik.http.services.[STATION-ID].loadbalancer.server.port=9100"
+  #  networks:
+  #    - internal
+  #    - traefik
+
+  ## Explanations:
+  ## [STATION-ID] is the unique ID of a tagging-station as seen in the confluence table
+  ## [RFID-READER-ID] and RFID-READER-IP are the unique ID and IP address of an RFID device as seen in the other confluence table
+  ## WHITELIST is a regex of all RFID EPCs that a reader should detect.
+  ##  1381F871 is the new DE290 tag prefix
+  ##  41 is the prefix of the Smartfreq tags of Bereichsbibliothek Raumplanung
+  ##  E2806894 is the prefix of the new blank uCode 8 tags
+  ## [AAAA] and [BBBB] are two ports on the VM where the instance will be reachable
+  ##  The first port is the port of the actual tagging application
+  ##  The second port is the port of the Dropwizard operations (debug) menu
+
+  tagging:
+    container_name: tagging
+    image: ghcr.io/bookwaves/rfid-reader:1.11.0-demo
+    restart: always
+    environment:
+      STATION_ID: tagging
+      READER_ID: 1
+      READER_IP: 192.168.1.92
+      READER_RSSICAP: 44
+      #WHITELIST: "^19.*|^1381F871.*|^41.*|^E2806894.*"
+      STATISTICS: tagging
+      SISIS: 0
+      POSTGRES_USER: foo
+      POSTGRES_PW: bar
+      POSTGRES_DB: jdbc:postgresql://db/rfid
+    ports:
+      - "9102-9103:9100-9101"
+    labels:
+      - "traefik.http.routers.tagging.rule=PathPrefix(`/tagging`)"
+      #- "traefik.http.routers.tagging.tls=true"
+      - "traefik.http.middlewares.tagging-mw.stripprefix.prefixes=/tagging"
+      - "traefik.http.routers.tagging.middlewares=tagging-mw"
+      - "traefik.http.services.tagging.loadbalancer.server.port=9100"
+    networks:
+      - internal
+      - traefik
+
+# the tls line is commented out since traefik is not configured for ssl
+
+
+  # the next station has no reader configured and is only used to serve statistics of all 4 other stations at once
+ # stats:
+ #   container_name: kuehnestats
+ #   image: gitlab.ub.tu-dortmund.de:4567/rfid/rfid-reader:1.9.4
+ #   restart: always
+ #   environment:
+ #     STATION_ID: kuehnestats
+ #     STATISTICS: kuehne1,kuehne2,kuehne3,kuehne4
+ #     SISIS: 1
+ #     POSTGRES_USER: foo
+ #     POSTGRES_PW: bar
+ #     POSTGRES_DB: jdbc:postgresql://db/rfid
+ #   ports:
+ #     - "9112-9113:9100-9101"
+ #   labels:
+ #     - "traefik.http.routers.kuehnestats.rule=PathPrefix(`/kuehnestats`)"
+ #     - "traefik.http.routers.kuehnestats.tls=true"
+ #     - "traefik.http.middlewares.kuehnestats-mw.stripprefix.prefixes=/kuehnestats"
+ #     - "traefik.http.routers.kuehnestats.middlewares=kuehnestats-mw"
+ #     - "traefik.http.services.kuehnestats.loadbalancer.server.port=9100"
+ #   networks:
+ #     - internal
+ #     - traefik
+
+
+  # Global Containers
+  ## The following two containers are the PostgreSQL database and an instance of Adminer
+  ## They are used for logging the tag write operations and provide the tagging statistics
+
+  db:
+    container_name: db
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: foo
+      POSTGRES_PASSWORD: bar
+      POSTGRES_DB: rfid
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - internal
+
+  adminer:
+    container_name: adminer
+    image: adminer
+    restart: always
+    ports:
+      - "8999:8080"
+    networks:
+      - internal
+
+    #whotwo:
+    # A container that exposes an API to show its IP address
+    #  image: traefik/whoami
+    #  container_name: whotwo
+    #  ports:
+    #    - "82:80"
+    #  labels:
+    #  - "traefik.http.routers.whotwo.rule=Path(`/two`)"
+    #  - "traefik.http.middlewares.whotwo-mw.stripprefix.prefixes=/two"
+    #  - "traefik.http.routers.whotwo.middlewares=whotwo-mw"
+    #     - "traefik.http.routers.whoami.tls=true"
+    #      - "traefik.htto.routers.whoami.entrypoints=websecure"
+    #   - "traefik.http.routers.whotwo.rule=Host(`rfid.ub.tu-dortmund.de`)"
+  #    - "traefik.http.services.whoami.loadBalancer.server.url=whoserv:81"
+  #  networks:
+  #    - traefik
+
+networks:
+  traefik:
+    external: true
+  internal:
+    external: false

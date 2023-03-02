@@ -10,6 +10,21 @@ This documentation is still WIP.
 
 If you have questions, please feel free to use the Discussions feature https://github.com/BookWaves/documentation/discussions of this repo.
 
+## Stack demo
+Some precompiled images are available to test the BooWaves application stack. However, they are only meant for demo purposes, since they are not customized for your specific environment
+
+### Starting the demo stack
+- prepare a Linux x86 VM wih Docker and Docker compose
+- `docker create network traefik`
+- start the traefik proxy in the `traefik` directory with `docker compose up -d`
+- for the tagging application, customize the compose file in `tagging` and then start it with `docker compose up -d`
+    - it will be reachable at http://localhost/tagging/gui/index.html as configured via the traefik rules
+    - the adminer for the postgres DB will be here: http://localhost:8999/?pgsql=db&username=foo&db=rfid
+- for the other BookWaves stack applications, customize the compose file in `rfid-stack` and then start it with `docker compose up -d
+    - after the db and one other app have been started for the first time, the DB schemes have been created
+    - the adminer to configure your devices will be at: http://localhost:8998/?pgsql=rfid-production-db&username=rfiddbuser&db=rfid
+    - after that, the individual applications will be, e.g., at http://localhost/production/checkout/1/ as configures via the traefik rules
+
 ## A brief how-to
 
 ### Building the stack
