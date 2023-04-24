@@ -144,6 +144,100 @@ services:
       - traefik
 
 
+
+ # ALMA
+ rfid-production-alma-service:
+    container_name: rfid-production-alma-service
+    image: ghcr.io/bookwaves/alma-service:1.3.5-DEMO
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      POSTGRES_USER: rfiddbuser
+      POSTGRES_PASSWORD: foobar
+      POSTGRES_DB: rfid
+      POSTGRES_HOST: rfid-production-db
+      POSTGRES_PORT: 5432
+      TZ: Europe/Berlin
+    labels:
+      - "traefik.http.routers.alma.rule=PathPrefix(`/alma`, `/production/alma-service`)"
+      # Override priority - default priority is based on rule length, that is wrong in this
+      # case as the admin rule is more specific and must match first
+      - "traefik.http.routers.alma.priority=1"
+      - "traefik.http.routers.alma.tls=true"
+      - "traefik.http.middlewares.alma-mw.stripprefix.prefixes=/alma,/production/alma-service"
+      - "traefik.http.routers.alma.middlewares=alma-mw"
+      - "traefik.http.services.alma.loadbalancer.server.port=9100"
+      - "traefik.http.routers.alma.service=alma"
+
+      # Expose admin panel
+      - "traefik.http.routers.alma-admin.rule=PathPrefix(`/production/alma-service/admin`)"
+      # See comment for router alma
+      - "traefik.http.routers.alma-admin.priority=2"
+      - "traefik.http.routers.alma-admin.tls=true"
+      - "traefik.http.middlewares.alma-admin.stripprefix.prefixes=/production/alma-service/admin"
+      - "traefik.http.routers.alma-admin.middlewares=alma-admin"
+      - "traefik.http.services.alma-admin.loadbalancer.server.port=9101"
+      - "traefik.http.routers.alma-admin.service=alma-admin"
+    networks:
+      - internal
+      - traefik
+      
+# DASHBOARD
+  rfid-production-dashboard-service:
+    container_name: rfid-production-dashboard-service
+    image: ghcr.io/bookwaves/dashboard-service:1.2.1-demo
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      TZ: Europe/Berlin
+      POSTGRES_USER: rfiddbuser
+      POSTGRES_PASSWORD: foobar
+      POSTGRES_DB: rfid
+      POSTGRES_HOST: rfid-production-db
+      POSTGRES_PORT: 5432
+      PAIA_URL: "https://api.ub.tu-dortmund.de/paia/"
+      ALMA_API_KEY: "l8xxxxx"
+      HOSTNAMEPREFIX: rfid-production-
+      GATEURLTEMPLATE: https://rfid.ub.tu-dortmund.de/production/gate/{id}/
+    labels:
+      - "traefik.http.routers.rfid-production-dashboard-service.rule=PathPrefix(`/production/dashboard/api`)"
+      - "traefik.http.routers.rfid-production-dashboard-service.tls=true"
+      - "traefik.http.middlewares.rfid-production-dashboard-service.stripprefix.prefixes=/production/dashboard/api"
+      - "traefik.http.routers.rfid-production-dashboard-service.middlewares=rfid-production-dashboard-service"
+      - "traefik.http.services.rfid-production-dashboard-service.loadbalancer.server.port=9200"
+    networks:
+      - internal
+      - traefik
+
+  rfid-production-dashboard:
+    container_name: rfid-production-dashboard
+    image: ghcr.io/bookwaves/dashboard-web:1.2.0
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      TZ: Europe/Berlin
+    labels:
+      - "traefik.http.routers.rfid-production-dashboard.rule=PathPrefix(`/production/dashboard/`)"
+      - "traefik.http.routers.rfid-production-dashboard.tls=true"
+      - "traefik.http.middlewares.rfid-production-dashboard.stripprefix.prefixes=/production/dashboard/"
+      - "traefik.http.routers.rfid-production-dashboard.middlewares=rfid-production-dashboard"
+      - "traefik.http.services.rfid-production-dashboard.loadbalancer.server.port=80"
+    networks:
+      - internal
+      - traefik
+      
  #-----------------------------------------------------------------
   # DATABASE
   rfid-production-db:
