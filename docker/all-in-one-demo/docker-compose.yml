@@ -235,7 +235,7 @@ services:
       # Override priority - default priority is based on rule length, that is wrong in this
       # case as the admin rule is more specific and must match first
       - "traefik.http.routers.alma.priority=1"
-      - "traefik.http.routers.alma.tls=true"
+      #- "traefik.http.routers.alma.tls=true"
       - "traefik.http.middlewares.alma-mw.stripprefix.prefixes=/alma,/production/alma-service"
       - "traefik.http.routers.alma.middlewares=alma-mw"
       - "traefik.http.services.alma.loadbalancer.server.port=9100"
@@ -245,7 +245,7 @@ services:
       - "traefik.http.routers.alma-admin.rule=PathPrefix(`/production/alma-service/admin`)"
       # See comment above on rule precendence
       - "traefik.http.routers.alma-admin.priority=2"
-      - "traefik.http.routers.alma-admin.tls=true"
+      #- "traefik.http.routers.alma-admin.tls=true"
       - "traefik.http.middlewares.alma-admin.stripprefix.prefixes=/production/alma-service/admin"
       - "traefik.http.routers.alma-admin.middlewares=alma-admin"
       - "traefik.http.services.alma-admin.loadbalancer.server.port=9101"
@@ -273,7 +273,7 @@ services:
       TZ: Europe/Berlin
     labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
       - "traefik.http.routers.rfid-production-dashboard.rule=PathPrefix(`/production/dashboard/`)"
-      - "traefik.http.routers.rfid-production-dashboard.tls=true"
+      #- "traefik.http.routers.rfid-production-dashboard.tls=true"
       - "traefik.http.middlewares.rfid-production-dashboard.stripprefix.prefixes=/production/dashboard/"
       - "traefik.http.routers.rfid-production-dashboard.middlewares=rfid-production-dashboard"
       - "traefik.http.services.rfid-production-dashboard.loadbalancer.server.port=80"
@@ -308,7 +308,7 @@ services:
       GATEURLTEMPLATE: https://rfid.ub.tu-dortmund.de/production/gate/{id}/ # Needed to provide proper links in the dashboard to the UIs of the gates
     labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
       - "traefik.http.routers.rfid-production-dashboard-service.rule=PathPrefix(`/production/dashboard/api`)"
-      - "traefik.http.routers.rfid-production-dashboard-service.tls=true"
+      #- "traefik.http.routers.rfid-production-dashboard-service.tls=true"
       - "traefik.http.middlewares.rfid-production-dashboard-service.stripprefix.prefixes=/production/dashboard/api"
       - "traefik.http.routers.rfid-production-dashboard-service.middlewares=rfid-production-dashboard-service"
       - "traefik.http.services.rfid-production-dashboard-service.loadbalancer.server.port=9200"
