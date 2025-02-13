@@ -345,6 +345,20 @@ services:
     networks:
       - internal
 
+  # populates the database with initial demo data. can be removed after first run
+  seed-db:
+    container_name: seed-db
+    image: postgres:13  # Use same version as main DB
+    depends_on:
+      - rfid-production-db
+    command:
+      sh -c "sleep 20 && psql -h rfid-production-db -U rfiddbuser -d rfid -f /seed.sql"
+    environment:
+      PGPASSWORD: foobar  # Required for non-interactive auth
+    volumes:
+      - ./seed.sql:/seed.sql  # Mount SQL file to root directory
+    networks:
+      - internal
 
   # A simple web GUI to look at postgres databases if you don't want to use a standalone postgres tool
   # Exposes its own port and is only used for debugging
