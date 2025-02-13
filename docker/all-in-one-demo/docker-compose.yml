@@ -231,12 +231,12 @@ services:
       POSTGRES_PORT: 5432
       TZ: Europe/Berlin
     labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
-      - "traefik.http.routers.alma.rule=PathPrefix(`/alma`, `/production/alma-service`)"
+      - "traefik.http.routers.alma.rule=PathPrefix(`/production/alma-service`)"
       # Override priority - default priority is based on rule length, that is wrong in this
       # case as the admin rule is more specific and must match first
       - "traefik.http.routers.alma.priority=1"
       #- "traefik.http.routers.alma.tls=true"
-      - "traefik.http.middlewares.alma-mw.stripprefix.prefixes=/alma,/production/alma-service"
+      - "traefik.http.middlewares.alma-mw.stripprefix.prefixes=/production/alma-service"
       - "traefik.http.routers.alma.middlewares=alma-mw"
       - "traefik.http.services.alma.loadbalancer.server.port=9100"
       - "traefik.http.routers.alma.service=alma"
