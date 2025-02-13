@@ -146,7 +146,7 @@ services:
 
 
  # ALMA
- rfid-production-alma-service:
+  rfid-production-alma-service:
     container_name: rfid-production-alma-service
     image: ghcr.io/bookwaves/alma-service:1.3.5-DEMO
     logging:

@@ -1,0 +1,19 @@
+providers:
+  docker:
+    network: traefik
+  file:
+    filename: /etc/traefik/dynamic.yml
+
+api:
+  insecure: true
+
+entryPoints:
+  http:
+    address: ":80"
+    #http:
+    #  redirections:
+    #    entryPoint:
+    #      to: https
+  #https:
+  #  address: ":443"
+# uncomment above to enable SSL

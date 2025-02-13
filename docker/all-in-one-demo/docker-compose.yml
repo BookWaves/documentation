@@ -1,0 +1,394 @@
+services:
+
+  # A tagging station that provides a web gui to write barcodes/keyboard input to RFID tags
+  # It is standalone from the rest of the BookWaves stack and comes with its own database
+  # Deploy multiple of these if you have more than one tagging station
+  tagging:
+    container_name: tagging
+    image: ghcr.io/bookwaves/rfid-reader:1.11.0-demo
+    restart: always
+    environment:
+      STATION_ID: tagging # Give the station a unique ID. It is used e.g. as a primary key in the DB
+      READER_ID: 1 # Give the RFID reader a unique ID. It is used e.g. as a primary key in the DB
+      READER_IP: 192.168.1.92 # The IP of your Feig UHF device in your LAN. Must be in Host Mode (see Feig manual)
+      READER_RSSICAP: 44 # Only detect tags with this minimum reception strength. Use this to shorten the range of the reader
+      #WHITELIST: "^19.*|^1381F871.*|^41.*|^E2806894.*" # Only detect tags with this EPC prefix. Use this to e.g. only detect your blank and written tags and not detect tags in e.g. your clothing
+      STATISTICS: tagging # Show tagging statistics of these docker containers in the UI. Use this to have one station be a statistics dashboard for multiple stations if necessary
+      SISIS: 0 # Leave as is. Was a legacy option to read old Sisis Sunrise exports of TU Dortmund for comparison statistics
+      POSTGRES_USER: foo
+      POSTGRES_PW: bar
+      POSTGRES_DB: jdbc:postgresql://db/rfid
+    ports:
+      - "9102-9103:9100-9101" # Exposed just for debugging purposes. Close in production use
+    labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
+      - "traefik.http.routers.tagging.rule=PathPrefix(`/tagging`)"
+      #- "traefik.http.routers.tagging.tls=true"
+      - "traefik.http.middlewares.tagging-mw.stripprefix.prefixes=/tagging"
+      - "traefik.http.routers.tagging.middlewares=tagging-mw"
+      - "traefik.http.services.tagging.loadbalancer.server.port=9100"
+    networks:
+      - internal
+      - traefik
+
+  # The database of the tagging container
+  db:
+    container_name: db
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: foo
+      POSTGRES_PASSWORD: bar
+      POSTGRES_DB: rfid
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # Exposed just for debugging purposes. Close in production use
+    networks:
+      - internal
+
+  #-----------------------------------------------------------------
+  # The main BookWaves stack
+  #-----------------------------------------------------------------
+
+  # CHECKOUT
+  # This container hosts the web UI of a self-checkout-machine (Selbstverbucher)
+  # In essence, it is just a simple NGINX containing the HTML/CSS/JS of the Angular GUI
+  # Use a kiosk browser (e.g. a desktop computer, an iPad) to present it to your patrons
+  # Each self-checkout-machine needs an instance of this container
+  rfid-production-checkout-1:
+    container_name: rfid-production-checkout-1
+    image: ghcr.io/bookwaves/checkout-web:2.0.3
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      TZ: Europe/Berlin
+    labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
+      - "traefik.http.routers.rfid-production-checkout-1.rule=PathPrefix(`/production/checkout/1/`)"
+      #- "traefik.http.routers.rfid-production-checkout-1.tls=true"
+      - "traefik.http.middlewares.rfid-production-checkout-1.stripprefix.prefixes=/production/checkout/1/"
+      - "traefik.http.routers.rfid-production-checkout-1.middlewares=rfid-production-checkout-1"
+      - "traefik.http.services.rfid-production-checkout-1.loadbalancer.server.port=80"
+    deploy:
+      resources:
+        limits:
+          memory: 50M
+    networks:
+      - internal
+      - traefik
+
+  # The REST microservice that complements the self-checkout-machine
+  # It connects via LAN to an RFID reader and also talks to the Alma API
+  # The detailed configuration happens (via primary key TERMINAL_ID) in the database
+  # Each self-checkout-machine needs an instance of this container
+  rfid-production-checkout-service-1:
+    container_name: rfid-production-checkout-service-1
+    image: ghcr.io/bookwaves/checkout-service:1.2.7-demo
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      PAIA_URL: "http://www.example.org/paia" # Only needed for QR student card of TU Dortmund
+      TOTP_URL: "http://www.example.org/qr" # Only needed for QR student card of TU Dortmund
+      TOTP_KEY: "12345changeme" # Only needed for QR student card of TU Dortmund
+      ALMA_API_KEY: "ADD-THE-ALMA-API-KEY-HERE" # Add an Alma API here with the following .... TODO
+      TERMINAL_ID: 1 # The unique primary key for this checkout/self-service-loan device in the database (e.g. for logging and configuration)
+      POSTGRES_USER: rfiddbuser
+      POSTGRES_PASSWORD: foobar
+      POSTGRES_DB: rfid
+      POSTGRES_HOST: rfid-production-db
+      POSTGRES_PORT: 5432
+      TZ: Europe/Berlin
+    labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
+      - "traefik.http.routers.rfid-production-checkout-service-1.rule=PathPrefix(`/production/checkout/1/api`)"
+      #- "traefik.http.routers.rfid-production-checkout-service-1.tls=true"
+      - "traefik.http.middlewares.rfid-production-checkout-service-1.stripprefix.prefixes=/production/checkout/1/api"
+      - "traefik.http.routers.rfid-production-checkout-service-1.middlewares=rfid-production-checkout-service-1"
+      - "traefik.http.services.rfid-production-checkout-service-1.loadbalancer.server.port=9100"
+      - "traefik.http.routers.rfid-production-checkout-service-1.service=rfid-production-checkout-service-1"
+
+      # These are needed for the service to be shown in dashboard
+      - "traefik.http.routers.rfid-production-checkout-service-1-admin.rule=PathPrefix(`/production/checkout/1/admin`)"
+      #- "traefik.http.routers.rfid-production-checkout-service-1-admin.tls=true"
+      - "traefik.http.middlewares.rfid-production-checkout-service-1-admin.stripprefix.prefixes=/production/checkout/1/admin"
+      - "traefik.http.routers.rfid-production-checkout-service-1-admin.middlewares=rfid-production-checkout-service-1-admin"
+      - "traefik.http.services.rfid-production-checkout-service-1-admin.loadbalancer.server.port=9101"
+      - "traefik.http.routers.rfid-production-checkout-service-1-admin.service=rfid-production-checkout-service-1-admin"
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+    networks:
+      - internal
+      - traefik
+
+
+  # GATES
+  # This container hosts the web UI of a security gate (Sicherungsgate)
+  # In essence, it is just a simple NGINX containing the HTML/CSS/JS of the Angular GUI
+  # Use a (larger) screen with browser and connected speakers and place it at the entrance/exit of your library
+  # It sounds an alarm when a book leaves the building that has its security bit still set (i.e. was not loaned)
+  # It also shows that exact book on the screen to inform the leaving patron of their mistake
+  # Each gate needs an instance of this container
+  rfid-production-gate-1:
+    container_name: rfid-production-gate-1
+    image: ghcr.io/bookwaves/gate-web:1.5.4
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      TZ: Europe/Berlin
+    labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
+      - "traefik.http.routers.rfid-production-gate-1.rule=PathPrefix(`/production/gate/1/`)"
+      #- "traefik.http.routers.rfid-production-gate-1.tls=true"
+      - "traefik.http.middlewares.rfid-production-gate-1.stripprefix.prefixes=/production/gate/1/"
+      - "traefik.http.routers.rfid-production-gate-1.middlewares=rfid-production-gate-1"
+      - "traefik.http.services.rfid-production-gate-1.loadbalancer.server.port=80"
+    deploy:
+      resources:
+        limits:
+          memory: 50M
+    networks:
+      - internal
+      - traefik
+
+  # The REST microservice that complements the gate
+  # It connects via LAN to an RFID reader and also talks to the Alma API
+  # The detailed configuration happens (via primary key GATE_ID) in the database
+  # Each gate needs an instance of this container
+  rfid-production-gate-service-1:
+    container_name: rfid-production-gate-service-1
+    image: ghcr.io/bookwaves/gate-service:1.5.5-demo
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      GATE_ID: 1 # The unique primary key for this security gate in the database (e.g. for logging and configuration)
+      ALMA_KEY: "ADD-THE-ALMA-API-KEY-HERE" # Add an Alma API here with the following .... TODO
+      POSTGRES_USER: rfiddbuser
+      POSTGRES_PASSWORD: foobar
+      POSTGRES_DB: rfid
+      POSTGRES_HOST: rfid-production-db
+      POSTGRES_PORT: 5432
+      TZ: Europe/Berlin
+    labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
+      - "traefik.http.routers.rfid-production-gate-service-1.rule=PathPrefix(`/production/gate/1/api`)"
+      #- "traefik.http.routers.rfid-production-gate-service-1.tls=true"
+      - "traefik.http.middlewares.rfid-production-gate-service-1.stripprefix.prefixes=/production/gate/1/api"
+      - "traefik.http.routers.rfid-production-gate-service-1.middlewares=rfid-production-gate-service-1"
+      - "traefik.http.services.rfid-production-gate-service-1.loadbalancer.server.port=9190"
+      - "traefik.http.routers.rfid-production-gate-service-1.service=rfid-production-gate-service-1"
+
+      # These are needed for the service to be shown in dashboard
+      - "traefik.http.routers.rfid-production-gate-service-1-admin.rule=PathPrefix(`/production/gate/1/admin`)"
+      #- "traefik.http.routers.rfid-production-gate-service-1-admin.tls=true"
+      - "traefik.http.middlewares.rfid-production-gate-service-1-admin.stripprefix.prefixes=/production/gate/1/admin"
+      - "traefik.http.routers.rfid-production-gate-service-1-admin.middlewares=rfid-production-gate-service-1-admin"
+      - "traefik.http.services.rfid-production-gate-service-1-admin.loadbalancer.server.port=9191"
+      - "traefik.http.routers.rfid-production-gate-service-1-admin.service=rfid-production-gate-service-1-admin"
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+    networks:
+      - internal
+      - traefik
+
+
+
+  # ALMA
+  # The REST microservice that implements the Alma RFID specification to be able to use network-connected RFID readers at your staff's desks
+  # It connects via LAN to multiple RFID readers and also talks to the Alma API
+  # The detailed configuration happens in the database
+  # You only need one instance of this container; use is as a so-called "Alma Integration"
+  rfid-production-alma-service:
+    container_name: rfid-production-alma-service
+    image: ghcr.io/bookwaves/alma-service:1.3.5-DEMO
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      POSTGRES_USER: rfiddbuser
+      POSTGRES_PASSWORD: foobar
+      POSTGRES_DB: rfid
+      POSTGRES_HOST: rfid-production-db
+      POSTGRES_PORT: 5432
+      TZ: Europe/Berlin
+    labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
+      - "traefik.http.routers.alma.rule=PathPrefix(`/alma`, `/production/alma-service`)"
+      # Override priority - default priority is based on rule length, that is wrong in this
+      # case as the admin rule is more specific and must match first
+      - "traefik.http.routers.alma.priority=1"
+      - "traefik.http.routers.alma.tls=true"
+      - "traefik.http.middlewares.alma-mw.stripprefix.prefixes=/alma,/production/alma-service"
+      - "traefik.http.routers.alma.middlewares=alma-mw"
+      - "traefik.http.services.alma.loadbalancer.server.port=9100"
+      - "traefik.http.routers.alma.service=alma"
+
+      # These are needed for the service to be shown in dashboard
+      - "traefik.http.routers.alma-admin.rule=PathPrefix(`/production/alma-service/admin`)"
+      # See comment above on rule precendence
+      - "traefik.http.routers.alma-admin.priority=2"
+      - "traefik.http.routers.alma-admin.tls=true"
+      - "traefik.http.middlewares.alma-admin.stripprefix.prefixes=/production/alma-service/admin"
+      - "traefik.http.routers.alma-admin.middlewares=alma-admin"
+      - "traefik.http.services.alma-admin.loadbalancer.server.port=9101"
+      - "traefik.http.routers.alma-admin.service=alma-admin"
+    networks:
+      - internal
+      - traefik
+
+
+  # DASHBOARD
+  # This container hosts the web UI of a dashboard to monitor your BookWaves infrastructure
+  # I.e. you can see if your checkout machines, gates and Alma RFID readers work or which errors are currently happening
+  # In essence, it is just a simple NGINX containing the HTML/CSS/JS of the Angular GUI
+  # You only need one instance of this container
+  rfid-production-dashboard:
+    container_name: rfid-production-dashboard
+    image: ghcr.io/bookwaves/dashboard-web:1.2.0
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      TZ: Europe/Berlin
+    labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
+      - "traefik.http.routers.rfid-production-dashboard.rule=PathPrefix(`/production/dashboard/`)"
+      - "traefik.http.routers.rfid-production-dashboard.tls=true"
+      - "traefik.http.middlewares.rfid-production-dashboard.stripprefix.prefixes=/production/dashboard/"
+      - "traefik.http.routers.rfid-production-dashboard.middlewares=rfid-production-dashboard"
+      - "traefik.http.services.rfid-production-dashboard.loadbalancer.server.port=80"
+    networks:
+      - internal
+      - traefik
+
+
+  # The REST microservice that complements the dashboard
+  # It connects to all the other services and gathers metrics
+  # The detailed configuration happens in the database
+  # You only need one instance of this container
+  rfid-production-dashboard-service:
+    container_name: rfid-production-dashboard-service
+    image: ghcr.io/bookwaves/dashboard-service:1.2.1-demo
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      TZ: Europe/Berlin
+      POSTGRES_USER: rfiddbuser
+      POSTGRES_PASSWORD: foobar
+      POSTGRES_DB: rfid
+      POSTGRES_HOST: rfid-production-db
+      POSTGRES_PORT: 5432
+      PAIA_URL: "https://api.ub.tu-dortmund.de/paia/" # TODO why???
+      ALMA_API_KEY: "ADD-THE-ALMA-API-KEY-HERE" # Add an Alma API here with the following .... TODO
+      HOSTNAMEPREFIX: rfid-production- # Needed to identify the containers it should monitor
+      GATEURLTEMPLATE: https://rfid.ub.tu-dortmund.de/production/gate/{id}/ # Needed to provide proper links in the dashboard to the UIs of the gates
+    labels: # These tell traefik where the UI is reachable. Comment in the tls line when using an HTTPS cert in ssl folder
+      - "traefik.http.routers.rfid-production-dashboard-service.rule=PathPrefix(`/production/dashboard/api`)"
+      - "traefik.http.routers.rfid-production-dashboard-service.tls=true"
+      - "traefik.http.middlewares.rfid-production-dashboard-service.stripprefix.prefixes=/production/dashboard/api"
+      - "traefik.http.routers.rfid-production-dashboard-service.middlewares=rfid-production-dashboard-service"
+      - "traefik.http.services.rfid-production-dashboard-service.loadbalancer.server.port=9200"
+    networks:
+      - internal
+      - traefik
+
+
+
+
+  #-----------------------------------------------------------------
+  # DATABASE
+  # The database of the main BookWaves stack. Managed (internally) by Hibernate
+  rfid-production-db:
+    container_name: rfid-production-db
+    image: postgres:13
+    command: postgres -c 'max_connections=200'
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      POSTGRES_USER: rfiddbuser
+      POSTGRES_PASSWORD: foobar
+      POSTGRES_DB: rfid
+      TZ: Europe/Berlin
+    volumes:
+      - ./postgresdata:/var/lib/postgresql/data
+    ports:
+      - 7654:5432 # Exposed for debugging. Close in production
+    networks:
+      - internal
+
+
+  # A simple web GUI to look at postgres databases if you don't want to use a standalone postgres tool
+  # Exposes its own port and is only used for debugging
+  # Remove this in production environments
+  adminer:
+    container_name: adminer
+    image: adminer
+    restart: always
+    ports:
+      - "8999:8080"
+    networks:
+      - internal
+
+  # A reverse proxy that controls the network flow of the containers using labels
+  # Thus it is the only container to expose BookWaves ports to the outside world
+  traefik:
+    image: traefik
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    container_name: bookwaves-traefik
+    restart: "always"
+    ports:
+      # Port 443 is used for HTTP traffic
+      - "80:80"
+      # Port 443 is used for HTTPS traffic
+      - "443:443"
+      # Port 8080 is used for traefik's own dashboard
+      - "8080:8080"
+    volumes:
+      # Here is the mount of the traefik config
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      # Here is the mount of the local ~/ssl directory
+      - ./ssl:/etc/traefik/ssl:ro
+      # The docker socket is mounted for auto-discovery of new services
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      # Attach the traefik container to the traefik network, to which all BookWaves containers are connected
+      - traefik
+
+
+networks:
+  traefik:
+    external: false # if you want to split this configuration (see folders rfid-stack, tagging, traefik), set this to true and create the network via Docker CLI
+  internal:
+    external: false

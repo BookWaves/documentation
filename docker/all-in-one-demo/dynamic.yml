@@ -1,0 +1,5 @@
+#tls:
+#  certificates:
+#    - certFile: ./ssl/cert.pem
+#      keyFile: ./ssl/cert.key
+# uncomment above to enable ssl
