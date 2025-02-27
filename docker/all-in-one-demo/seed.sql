@@ -6,7 +6,7 @@ INSERT INTO public.rfidreaderproperty (rfidreader_id, value, key) VALUES (1, '12
 INSERT INTO public.rfidreaderproperty (rfidreader_id, value, key) VALUES (2, '12345-true,6789-false', 'media-ids');
 INSERT INTO public.rfidreaderproperty (rfidreader_id, value, key) VALUES (3, '12345-true', 'media-ids');
 INSERT INTO public.rfidreaderproperty (rfidreader_id, value, key) VALUES (4, '6789-false', 'media-ids');
-INSERT INTO public.selfserviceterminal (id, circ_desk, enable_borrow, enable_return, enabled, front_camera, infotext, library, login_timeout, name, rfidreader_id) VALUES (1, 'TODO_ADD_CIRC_DESK_ID_FROM_YOUR_ALMA', true, true, true, true, 'Hello BookWaves :-D', 'TODO_ADD_LIBRARY_ID_FROM_YOUR_ALMA', 60, 'Demo Selbsverbucher', 1);
+INSERT INTO public.selfserviceterminal (id, circ_desk, enable_borrow, enable_return, enabled, front_camera, infotext, library, login_timeout, name, rfidreader_id) VALUES (1, 'TODO_ALMA_CIRC_DESK', true, true, true, true, 'Hello BookWaves :-D', 'TODO_ALMA_LIBRARY', 60, 'Demo Selbsverbucher', 1);
 INSERT INTO public.gate (id, enabled, infotext, name, rfidreader_id) VALUES (1, true, 'Hello BookWaves :-D', 'Demo Ausgangsgate', 2);
 INSERT INTO public.almaservicereader (id, enabled, reader_id) VALUES (1, true, 3);
 INSERT INTO public.almaservicereader (id, enabled, reader_id) VALUES (2, true, 4);
@@ -16,3 +16,4 @@ INSERT INTO public.dashboard_selfserviceterminal (dashboard_id, terminals_id) VA
 INSERT INTO public.dashboard_gate (dashboard_id, gates_id) VALUES (1, 1);
 INSERT INTO public.dashboard_almaservicereader (dashboard_id, almaservicereader_id) VALUES (1, 1);
 INSERT INTO public.dashboard_almaservicereader (dashboard_id, almaservicereader_id) VALUES (1, 2);
+INSERT INTO public.dashboardalmagroup (id, role_type, scope, dashboard_id) VALUES (1, 1, 1, 1);
