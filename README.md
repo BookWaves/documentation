@@ -19,10 +19,10 @@ Some precompiled images are available to test the BooWaves application stack. Ho
 - `cd docker/all-in-one-demo`
 - Edit the `seed.sql`, which initializes the config-db with sample config
   - Change the media IDs 12345 and 6789 to some IDs that exist in your Alma. This way the demo can simulate having RFID tags laying on simulated devices. That is quite nice to have for a demo.
-  - Replace TODO_ADD_CIRC_DESK_ID_FROM_YOUR_ALMA and TODO_ADD_LIBRARY_ID_FROM_YOUR_ALMA with working IDs. This determines at which location in your organization your demo self-checkout-machine will borrow and return books. Its not necessary to do this, but otherwise the last step of loaning/borrowing will fail.
+  - Replace TODO_ALMA_CIRC_DESK and TODO_ALMA_LIBRARY with working IDs. This determines at which location in your organization your demo self-checkout-machine will borrow and return books. Its not necessary to do this, but otherwise the last step of loaning/borrowing will fail.
   - Change 1.2.3.4 to your current IP. You can also define a whole subnet. This way your Alma session will be mapped to one of the simulated RFID readers to try the Alma integration. Only necessary if you do the SSL config (see below). If you don't do this right away, don't worry, an error message along the way will tell your you current IP while testing.
 - Edit the `docker-compose.yml`
-  - There are 3 places where you must add an Alma API key with "Users - Sandbox Read/write" and "Bibs - Sandbox Read-only" permissions.
+  - There are 3 places where you must add an Alma API key with "Users - Sandbox Read/write" and "Bibs - Sandbox Read/write" and "Configuration - Sandboy Read-only" permissions.
   - Also, be sure to read the comments in that file to get an understanding of the different containers.
 - OPTIONAL: SSL config
   - Place your SSL certs into the `ssl` folder and edit the Traefik configuration to use SSL. Refer to traefiks documentation. TODO: explain in more detail
@@ -66,7 +66,9 @@ There is also a web GUI to look at the pre-initialized SQL db. You can also edit
   - Refer to the official documentation for more info: https://knowledge.exlibrisgroup.com/Alma/Product_Documentation/Alma_Online_Help_(Deutsch)/090Integrationen_mit_externen_Systemen/040Erf%C3%BCllung/080RFID-Support
 
 #### Dashboard
-- TODO Documentation
+- The dashboard is reachable at http://localhost/production/dashboard/ and shows the current status of the services and devices
+- You can change (some of) the settings of the devices. Those will reflect in the SQL database
+- You also see the device statistics and the last events
 
 #### Tagging
 - It will be reachable at http://localhost/tagging/gui/index.html
