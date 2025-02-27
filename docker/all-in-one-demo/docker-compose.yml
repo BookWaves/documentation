@@ -58,7 +58,7 @@ services:
   # Each self-checkout-machine needs an instance of this container
   rfid-production-checkout-1:
     container_name: rfid-production-checkout-1
-    image: ghcr.io/bookwaves/checkout-web:2.0.3
+    image: ghcr.io/bookwaves/checkout-web:2.1.0
     logging:
       driver: "json-file"
       options:
@@ -87,7 +87,7 @@ services:
   # Each self-checkout-machine needs an instance of this container
   rfid-production-checkout-service-1:
     container_name: rfid-production-checkout-service-1
-    image: ghcr.io/bookwaves/checkout-service:1.2.7-demo
+    image: ghcr.io/bookwaves/checkout-service:2.1.0-DEMO
     logging:
       driver: "json-file"
       options:
@@ -262,7 +262,7 @@ services:
   # You only need one instance of this container
   rfid-production-dashboard:
     container_name: rfid-production-dashboard
-    image: ghcr.io/bookwaves/dashboard-web:1.2.0
+    image: ghcr.io/bookwaves/dashboard-web:2.1.0
     logging:
       driver: "json-file"
       options:
@@ -288,7 +288,7 @@ services:
   # You only need one instance of this container
   rfid-production-dashboard-service:
     container_name: rfid-production-dashboard-service
-    image: ghcr.io/bookwaves/dashboard-service:1.2.1-demo
+    image: ghcr.io/bookwaves/dashboard-service:2.1.0-DEMO
     logging:
       driver: "json-file"
       options:
