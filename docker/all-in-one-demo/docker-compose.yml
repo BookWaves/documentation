@@ -360,6 +360,26 @@ services:
     networks:
       - internal
 
+  virtual-reader:
+    container_name: virtual-reader
+    image: ghcr.io/bookwaves/virtual-reader:latest
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: always
+    environment:
+      DB_USER: rfiddbuser
+      DB_PASSWORD: foobar
+      DB_HOST: rfid-production-db
+      DB_PORT: 5432
+      DB_NAME: rfid
+    ports:
+      - "4444:3000"
+    networks:
+      - internal
+
   # A simple web GUI to look at postgres databases if you don't want to use a standalone postgres tool
   # Exposes its own port and is only used for debugging
   # Remove this in production environments

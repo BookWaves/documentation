@@ -46,6 +46,11 @@ There is also a web GUI to look at the pre-initialized SQL db. You can also edit
   - Check wich items are on the reader
 - The reader is the simulated reader populated by the media IDs in the SQL table
 
+#### Virtuel reader
+- The virtual readers can be controlled at http://localhost:4444/
+- The GUI is a small controller application to put simulated tags on the simulated readers
+- Helps to try out the gate, checkout and Alma integration
+
 #### Gate
 - Your gate is reachable at localhost/production/gate/1/
 - Its healthcheck is at localhost/production/gate/1/admin/healthcheck
